@@ -2,13 +2,13 @@ const router = require("express").Router();
 const Entry = require("../models/Entry");
 const axios = require("axios");
 
-/* 🔥 NLP SERVICE URL (Render) */
+/* 🔥 NLP SERVICE URL */
 const NLP_URL = "https://mental-wellbeing-full-2.onrender.com/analyze";
 
 /* 🧠 HELPER FUNCTIONS */
 
 function normalizeMood(mood) {
-  return mood.toLowerCase();
+  return mood?.toLowerCase().trim();
 }
 
 function moodToExpectedRange(mood) {
@@ -22,45 +22,41 @@ function moodToExpectedRange(mood) {
   return [-1, 1];
 }
 
-function detectMismatch(mood, sentimentScore) {
+function detectMismatch(mood, score) {
   const [min, max] = moodToExpectedRange(mood);
   const tolerance = 0.15;
 
-  return (
-    sentimentScore < min - tolerance ||
-    sentimentScore > max + tolerance
-  );
+  return score < (min - tolerance) || score > (max + tolerance);
 }
 
-function perceptionType(mood, sentimentScore) {
+function perceptionType(mood, score) {
   mood = normalizeMood(mood);
 
-  if (mood === "happy" && sentimentScore < -0.2)
+  if (mood === "happy" && score < -0.2)
     return "Masking Stress";
 
   if (
     ["sad", "anxious", "stressed"].includes(mood) &&
-    sentimentScore > 0.2
+    score > 0.2
   )
     return "Resilience";
 
   return "Aligned";
 }
 
-/* 🔥 REAL NLP CALL (REPLACES MOCK AI) */
+/* 🔥 NLP CALL */
 async function analyzeText(text) {
   try {
-    const res = await axios.post(NLP_URL, { text });
+    const res = await axios.post(NLP_URL, { text }, { timeout: 10000 });
 
     return {
-      score: res.data.score,
-      severity: res.data.severity
+      score: res.data?.score ?? 0,
+      severity: res.data?.severity ?? "Unknown"
     };
 
   } catch (err) {
-    console.error("NLP ERROR:", err.message);
+    console.error("❌ NLP ERROR:", err.message);
 
-    // fallback (safe default)
     return {
       score: 0,
       severity: "Unknown"
@@ -74,31 +70,34 @@ router.post("/entry", async (req, res) => {
     let { text, mood } = req.body;
 
     if (!text || !mood) {
-      return res.status(400).json({ error: "Missing data" });
+      return res.status(400).json({ error: "Text and mood are required" });
     }
 
     mood = normalizeMood(mood);
 
     const aiResult = await analyzeText(text);
 
+    const score = aiResult.score;
+
     const entry = new Entry({
       text,
       mood,
-      sentimentScore: aiResult.score,
+      sentimentScore: score,
       severity: aiResult.severity,
-      mismatch: detectMismatch(mood, aiResult.score),
-      perceptionType: perceptionType(mood, aiResult.score)
+      mismatch: detectMismatch(mood, score),
+      perceptionType: perceptionType(mood, score)
     });
 
     await entry.save();
 
-    res.json({
+    res.status(201).json({
       success: true,
+      message: "Entry saved successfully",
       data: entry
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("❌ ENTRY ERROR:", err);
     res.status(500).json({ error: "Failed to save entry" });
   }
 });
@@ -107,7 +106,7 @@ router.post("/entry", async (req, res) => {
 router.get("/entry", async (req, res) => {
   try {
     const entries = await Entry.find().sort({ createdAt: -1 });
-    res.json(entries);
+    res.json({ success: true, data: entries });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -131,6 +130,7 @@ router.get("/analytics", async (req, res) => {
     });
 
     res.json({
+      success: true,
       sentimentTrend,
       moodCount
     });
@@ -152,6 +152,7 @@ router.get("/awareness", async (req, res) => {
       total === 0 ? 0 : Math.round((aligned / total) * 100);
 
     res.json({
+      success: true,
       awarenessScore,
       totalEntries: total,
       alignedEntries: aligned,
@@ -174,7 +175,10 @@ router.get("/perception-analysis", async (req, res) => {
         (result[e.perceptionType] || 0) + 1;
     });
 
-    res.json(result);
+    res.json({
+      success: true,
+      data: result
+    });
 
   } catch (err) {
     res.status(500).json({ error: "Failed to analyze perception data" });
