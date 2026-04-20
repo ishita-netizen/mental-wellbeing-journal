@@ -8,7 +8,13 @@ const journalRoutes = require("./routes/journalRoutes");
 
 const app = express();
 
-app.use(cors());
+// ✅ FIXED CORS
+app.use(cors({
+  origin: "https://mental-wellbeing-full.vercel.app",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Root route
