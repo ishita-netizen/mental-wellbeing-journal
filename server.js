@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -9,14 +11,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
+// ✅ Root route (IMPORTANT)
+app.get("/", (req, res) => {
+  res.send("Backend is LIVE 🚀");
+});
+
+// MongoDB Atlas connection
 mongoose
-  .connect("mongodb://127.0.0.1:27017/wellbeing")
-  .then(() => console.log("MongoDB connected"))
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Atlas connected ✅"))
   .catch(err => console.error(err));
 
 app.use("/", journalRoutes);
 
-app.listen(5000, () => {
-  console.log("Backend running on http://localhost:5000");
+// ✅ FIXED PORT
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Backend running on http://localhost:${PORT}`);
 });
