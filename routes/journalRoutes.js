@@ -1,59 +1,85 @@
 const router = require("express").Router();
 const Entry = require("../models/Entry");
+const axios = require("axios");
 
-/* Helper Logic Functions */
+/* 🔥 NLP SERVICE URL (Render) */
+const NLP_URL = "https://mental-wellbeing-full-2.onrender.com/analyze";
+
+/* 🧠 HELPER FUNCTIONS */
+
+function normalizeMood(mood) {
+  return mood.toLowerCase();
+}
 
 function moodToExpectedRange(mood) {
-  if (mood === "Happy") return [0.2, 1];
-  if (mood === "Neutral") return [-0.2, 0.2];
-  if (mood === "Sad" || mood === "Anxious" || mood === "Stressed")
-    return [-1, -0.2];
+  mood = normalizeMood(mood);
+
+  if (mood === "happy") return [0.1, 1];
+  if (mood === "neutral") return [-0.3, 0.3];
+  if (["sad", "anxious", "stressed"].includes(mood))
+    return [-1, -0.1];
 
   return [-1, 1];
 }
 
 function detectMismatch(mood, sentimentScore) {
   const [min, max] = moodToExpectedRange(mood);
-  return sentimentScore < min || sentimentScore > max;
+  const tolerance = 0.15;
+
+  return (
+    sentimentScore < min - tolerance ||
+    sentimentScore > max + tolerance
+  );
 }
 
 function perceptionType(mood, sentimentScore) {
-  if (mood === "Happy" && sentimentScore < 0)
+  mood = normalizeMood(mood);
+
+  if (mood === "happy" && sentimentScore < -0.2)
     return "Masking Stress";
 
-  if ((mood === "Sad" || mood === "Anxious") && sentimentScore > 0)
+  if (
+    ["sad", "anxious", "stressed"].includes(mood) &&
+    sentimentScore > 0.2
+  )
     return "Resilience";
 
   return "Aligned";
 }
 
-/* 🔥 MOCK AI FUNCTION (REPLACES localhost API) */
-function analyzeText(text) {
-  let score = 0;
+/* 🔥 REAL NLP CALL (REPLACES MOCK AI) */
+async function analyzeText(text) {
+  try {
+    const res = await axios.post(NLP_URL, { text });
 
-  if (text.toLowerCase().includes("happy")) score = 0.8;
-  else if (text.toLowerCase().includes("sad")) score = -0.7;
-  else if (text.toLowerCase().includes("stress")) score = -0.6;
-  else score = Math.random() * 2 - 1;
+    return {
+      score: res.data.score,
+      severity: res.data.severity
+    };
 
-  let severity = "Low";
-  if (score < -0.5) severity = "High";
-  else if (score < 0) severity = "Moderate";
+  } catch (err) {
+    console.error("NLP ERROR:", err.message);
 
-  return { score, severity };
+    // fallback (safe default)
+    return {
+      score: 0,
+      severity: "Unknown"
+    };
+  }
 }
 
 /* 🟢 POST ENTRY */
 router.post("/entry", async (req, res) => {
   try {
-    const { text, mood } = req.body;
+    let { text, mood } = req.body;
 
     if (!text || !mood) {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    // 🔥 Use mock AI instead of localhost API
-    const aiResult = analyzeText(text);
+    mood = normalizeMood(mood);
+
+    const aiResult = await analyzeText(text);
 
     const entry = new Entry({
       text,
