@@ -11,20 +11,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Root route (IMPORTANT)
+// Root route
 app.get("/", (req, res) => {
   res.send("Backend is LIVE 🚀");
 });
 
-// MongoDB Atlas connection
+// MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Atlas connected ✅"))
-  .catch(err => console.error(err));
+  .catch(err => {
+    console.error("DB Error:", err);
+    process.exit(1);
+  });
 
-app.use("/", journalRoutes);
+// Routes
+app.use("/api", journalRoutes);
 
-// ✅ FIXED PORT
+// Error handler
+app.use((err, req, res, next) => {
+  res.status(500).json({ error: "Something went wrong" });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
