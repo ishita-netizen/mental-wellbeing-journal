@@ -8,39 +8,53 @@ const journalRoutes = require("./routes/journalRoutes");
 
 const app = express();
 
-// ✅ FIXED CORS
+/* 🔥 CORS FIX (important for Vercel + Postman) */
 app.use(cors({
-  origin: "https://mental-wellbeing-full.vercel.app",
+  origin: [
+    "https://mental-wellbeing-full.vercel.app",
+    "http://localhost:3000" // for local testing
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
+/* 🔥 Middleware */
 app.use(express.json());
 
-// Root route
+/* 🔥 Health Check Route */
 app.get("/", (req, res) => {
-  res.send("Backend is LIVE 🚀");
+  res.json({ message: "Backend is LIVE 🚀" });
 });
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Atlas connected ✅"))
-  .catch(err => {
-    console.error("DB Error:", err);
-    process.exit(1);
-  });
-
-// Routes
+/* 🔥 Routes */
 app.use("/api", journalRoutes);
 
-// Error handler
-app.use((err, req, res, next) => {
-  res.status(500).json({ error: "Something went wrong" });
+/* 🔥 MongoDB Connection (better handling) */
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+  console.log("MongoDB Atlas connected ✅");
+
+  /* 🔥 Start server ONLY after DB connects */
+  const PORT = process.env.PORT || 5000;
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+
+})
+.catch(err => {
+  console.error("❌ DB Connection Error:", err);
+  process.exit(1);
 });
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+/* 🔥 Global Error Handler */
+app.use((err, req, res, next) => {
+  console.error("❌ Server Error:", err.stack);
+  res.status(500).json({
+    success: false,
+    error: "Internal Server Error"
+  });
 });
