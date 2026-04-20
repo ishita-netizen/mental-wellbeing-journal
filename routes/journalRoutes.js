@@ -1,5 +1,4 @@
 const router = require("express").Router();
-const axios = require("axios");
 const Entry = require("../models/Entry");
 
 /* Helper Logic Functions */
@@ -28,6 +27,23 @@ function perceptionType(mood, sentimentScore) {
   return "Aligned";
 }
 
+/* 🔥 MOCK AI FUNCTION (REPLACES localhost API) */
+function analyzeText(text) {
+  let score = 0;
+
+  if (text.toLowerCase().includes("happy")) score = 0.8;
+  else if (text.toLowerCase().includes("sad")) score = -0.7;
+  else if (text.toLowerCase().includes("stress")) score = -0.6;
+  else score = Math.random() * 2 - 1;
+
+  let severity = "Low";
+  if (score < -0.5) severity = "High";
+  else if (score < 0) severity = "Moderate";
+
+  return { score, severity };
+}
+
+/* 🟢 POST ENTRY */
 router.post("/entry", async (req, res) => {
   try {
     const { text, mood } = req.body;
@@ -36,29 +52,23 @@ router.post("/entry", async (req, res) => {
       return res.status(400).json({ error: "Missing data" });
     }
 
-    const aiResponse = await axios.post(
-      "http://localhost:8000/analyze",
-      { text }
-    );
-
-    const sentimentScore = aiResponse.data.score;
-    const severity = aiResponse.data.severity;
+    // 🔥 Use mock AI instead of localhost API
+    const aiResult = analyzeText(text);
 
     const entry = new Entry({
       text,
       mood,
-      sentimentScore,
-      severity,
-      mismatch: detectMismatch(mood, sentimentScore),
-      perceptionType: perceptionType(mood, sentimentScore)
+      sentimentScore: aiResult.score,
+      severity: aiResult.severity,
+      mismatch: detectMismatch(mood, aiResult.score),
+      perceptionType: perceptionType(mood, aiResult.score)
     });
 
     await entry.save();
 
     res.json({
       success: true,
-      mismatch: entry.mismatch,
-      perceptionType: entry.perceptionType
+      data: entry
     });
 
   } catch (err) {
@@ -67,6 +77,17 @@ router.post("/entry", async (req, res) => {
   }
 });
 
+/* 🟢 GET ALL ENTRIES */
+router.get("/entry", async (req, res) => {
+  try {
+    const entries = await Entry.find().sort({ createdAt: -1 });
+    res.json(entries);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* 🟢 ANALYTICS */
 router.get("/analytics", async (req, res) => {
   try {
     const entries = await Entry.find()
@@ -89,11 +110,11 @@ router.get("/analytics", async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
 
+/* 🟢 AWARENESS */
 router.get("/awareness", async (req, res) => {
   try {
     const entries = await Entry.find();
@@ -112,11 +133,11 @@ router.get("/awareness", async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to calculate awareness" });
   }
 });
 
+/* 🟢 PERCEPTION ANALYSIS */
 router.get("/perception-analysis", async (req, res) => {
   try {
     const entries = await Entry.find();
@@ -130,7 +151,6 @@ router.get("/perception-analysis", async (req, res) => {
     res.json(result);
 
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to analyze perception data" });
   }
 });
