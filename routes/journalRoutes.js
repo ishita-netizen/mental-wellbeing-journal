@@ -51,7 +51,8 @@ async function analyzeText(text) {
 
     return {
       score: res.data?.score ?? 0,
-      severity: res.data?.severity ?? "Unknown"
+      severity: res.data?.severity ?? "Unknown",
+      predicted_mood: res.data?.predicted_mood ?? "Neutral" // ✅ FIX
     };
 
   } catch (err) {
@@ -59,7 +60,8 @@ async function analyzeText(text) {
 
     return {
       score: 0,
-      severity: "Unknown"
+      severity: "Unknown",
+      predicted_mood: "Neutral"
     };
   }
 }
@@ -76,7 +78,6 @@ router.post("/entry", async (req, res) => {
     mood = normalizeMood(mood);
 
     const aiResult = await analyzeText(text);
-
     const score = aiResult.score;
 
     const entry = new Entry({
@@ -84,6 +85,7 @@ router.post("/entry", async (req, res) => {
       mood,
       sentimentScore: score,
       severity: aiResult.severity,
+      predictedMood: aiResult.predicted_mood, // ✅ FIX (MAIN LINE)
       mismatch: detectMismatch(mood, score),
       perceptionType: perceptionType(mood, score)
     });
