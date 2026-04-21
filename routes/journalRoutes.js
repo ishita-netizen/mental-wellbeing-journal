@@ -44,18 +44,15 @@ function perceptionType(mood, score) {
   return "Aligned";
 }
 
-/* 🔥 NLP CALL */
+/* 🔥 NLP CALL (FINAL FIXED) */
 async function analyzeText(text) {
   try {
-    const res = await axios.post(NLP_URL, { text }, { timeout: 10000 });
-
-    // 🔥 DEBUG LOG (very important)
-    console.log("NLP RESPONSE:", res.data);
+    const res = await axios.post(NLP_URL, { text });
 
     return {
       score: res.data.score,
       severity: res.data.severity,
-      predicted_mood: res.data.predicted_mood // ✅ MUST exist from Flask
+      predicted_mood: res.data.predicted_mood // ✅ comes from Flask
     };
 
   } catch (err) {
@@ -87,7 +84,7 @@ router.post("/entry", async (req, res) => {
       mood,
       sentimentScore: aiResult.score,
       severity: aiResult.severity,
-      predictedMood: aiResult.predicted_mood, // ✅ FINAL FIX
+      predictedMood: aiResult.predicted_mood, // ✅ FINAL IMPORTANT LINE
       mismatch: detectMismatch(mood, aiResult.score),
       perceptionType: perceptionType(mood, aiResult.score)
     });
@@ -124,7 +121,7 @@ router.get("/analytics", async (req, res) => {
       .limit(30);
 
     const sentimentTrend = entries.map(e => ({
-      date: e.createdAt.toDateString(),
+      date: e.createdAt,
       score: e.sentimentScore
     }));
 
