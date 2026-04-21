@@ -49,10 +49,13 @@ async function analyzeText(text) {
   try {
     const res = await axios.post(NLP_URL, { text }, { timeout: 10000 });
 
+    // 🔥 DEBUG LOG (very important)
+    console.log("NLP RESPONSE:", res.data);
+
     return {
-      score: res.data?.score ?? 0,
-      severity: res.data?.severity ?? "Unknown",
-      predicted_mood: res.data?.predicted_mood ?? "Neutral" // ✅ FIX
+      score: res.data.score,
+      severity: res.data.severity,
+      predicted_mood: res.data.predicted_mood // ✅ MUST exist from Flask
     };
 
   } catch (err) {
@@ -78,16 +81,15 @@ router.post("/entry", async (req, res) => {
     mood = normalizeMood(mood);
 
     const aiResult = await analyzeText(text);
-    const score = aiResult.score;
 
     const entry = new Entry({
       text,
       mood,
-      sentimentScore: score,
+      sentimentScore: aiResult.score,
       severity: aiResult.severity,
-      predictedMood: aiResult.predicted_mood, // ✅ FIX (MAIN LINE)
-      mismatch: detectMismatch(mood, score),
-      perceptionType: perceptionType(mood, score)
+      predictedMood: aiResult.predicted_mood, // ✅ FINAL FIX
+      mismatch: detectMismatch(mood, aiResult.score),
+      perceptionType: perceptionType(mood, aiResult.score)
     });
 
     await entry.save();
