@@ -52,7 +52,7 @@ async function analyzeText(text) {
     };
 
   } catch (err) {
-    console.error("❌ NLP ERROR:", err.message);
+    console.error("NLP ERROR:", err.message);
 
     return {
       score: 0,
