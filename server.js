@@ -20,7 +20,7 @@ app.use(cors({
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.json({ message: "Backend is LIVE 🚀" });
+  res.json({ message: "Backend is LIVE" });
 });
 
 app.use("/api", journalRoutes);
