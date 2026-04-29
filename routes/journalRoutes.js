@@ -93,7 +93,7 @@ router.post("/entry", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ ENTRY ERROR:", err);
+    console.error("ENTRY ERROR:", err);
     res.status(500).json({ error: "Failed to save entry" });
   }
 });
