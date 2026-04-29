@@ -2,10 +2,7 @@ const router = require("express").Router();
 const Entry = require("../models/Entry");
 const axios = require("axios");
 
-/* 🔥 NLP SERVICE URL */
 const NLP_URL = "https://mental-wellbeing-full-2.onrender.com/analyze";
-
-/* 🧠 HELPER FUNCTIONS */
 
 function normalizeMood(mood) {
   return mood?.toLowerCase().trim();
@@ -44,7 +41,6 @@ function perceptionType(mood, score) {
   return "Aligned";
 }
 
-/* 🔥 NLP CALL (FINAL FIXED) */
 async function analyzeText(text) {
   try {
     const res = await axios.post(NLP_URL, { text });
@@ -52,7 +48,7 @@ async function analyzeText(text) {
     return {
       score: res.data.score,
       severity: res.data.severity,
-      predicted_mood: res.data.predicted_mood // ✅ comes from Flask
+      predicted_mood: res.data.predicted_mood 
     };
 
   } catch (err) {
@@ -66,7 +62,6 @@ async function analyzeText(text) {
   }
 }
 
-/* 🟢 POST ENTRY */
 router.post("/entry", async (req, res) => {
   try {
     let { text, mood } = req.body;
@@ -84,7 +79,7 @@ router.post("/entry", async (req, res) => {
       mood,
       sentimentScore: aiResult.score,
       severity: aiResult.severity,
-      predictedMood: aiResult.predicted_mood, // ✅ FINAL IMPORTANT LINE
+      predictedMood: aiResult.predicted_mood,
       mismatch: detectMismatch(mood, aiResult.score),
       perceptionType: perceptionType(mood, aiResult.score)
     });
@@ -103,7 +98,6 @@ router.post("/entry", async (req, res) => {
   }
 });
 
-/* 🟢 GET ALL ENTRIES */
 router.get("/entry", async (req, res) => {
   try {
     const entries = await Entry.find().sort({ createdAt: -1 });
@@ -113,7 +107,6 @@ router.get("/entry", async (req, res) => {
   }
 });
 
-/* 🟢 ANALYTICS */
 router.get("/analytics", async (req, res) => {
   try {
     const entries = await Entry.find()
@@ -141,7 +134,6 @@ router.get("/analytics", async (req, res) => {
   }
 });
 
-/* 🟢 AWARENESS */
 router.get("/awareness", async (req, res) => {
   try {
     const entries = await Entry.find();
@@ -165,7 +157,6 @@ router.get("/awareness", async (req, res) => {
   }
 });
 
-/* 🟢 PERCEPTION ANALYSIS */
 router.get("/perception-analysis", async (req, res) => {
   try {
     const entries = await Entry.find();
